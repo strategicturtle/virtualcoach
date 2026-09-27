@@ -15,7 +15,8 @@ async function findOwnVideo(ctx: RouteContext<"/api/videos/[id]">) {
 }
 
 // Redirects to a temporary bucket URL so the video streams from storage, not this server.
-export async function GET(_request: Request, ctx: RouteContext<"/api/videos/[id]">) {
+// `?format=json` returns the URL instead, for loading the clip cross-origin (frame capture).
+export async function GET(request: Request, ctx: RouteContext<"/api/videos/[id]">) {
   const video = await findOwnVideo(ctx);
   if (!video || !video.uploaded) return new Response("Not found", { status: 404 });
 
@@ -24,6 +25,9 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/videos/[id]
     new GetObjectCommand({ Bucket: bucket, Key: videoKey(video.id) }),
     { expiresIn: 3600 },
   );
+  if (new URL(request.url).searchParams.get("format") === "json") {
+    return Response.json({ url });
+  }
   return Response.redirect(url, 302);
 }
 

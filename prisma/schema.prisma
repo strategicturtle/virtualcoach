@@ -24,8 +24,11 @@ model User {
   approvalTokenHash String?    @unique // sha256 of the emailed approve/reject token
   createdAt         DateTime   @default(now())
   approvedAt        DateTime?
+  position          String? // last choices on the coaching form, used as defaults
+  level             String?
   sessions          Session[]
   videos            Video[]
+  analyses          Analysis[]
 }
 
 model Session {
@@ -46,6 +49,28 @@ model Video {
   seconds     Int
   uploaded    Boolean  @default(false)
   createdAt   DateTime @default(now())
+  analyses    Analysis[]
 
   @@index([userId, createdAt])
+}
+
+// AI coaching feedback on a clip. A clip can be re-analyzed; the newest one is shown.
+model Analysis {
+  id           String   @id @default(cuid())
+  videoId      String
+  video        Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill        String
+  position     String
+  level        String
+  report       Json // CoachingReport, see src/lib/coaching/report.ts
+  frameCount   Int
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([videoId, createdAt])
 }
