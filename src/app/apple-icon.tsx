@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og";
 
+const GOLD_SHINE = "linear-gradient(180deg, #fff6cf 0%, #ffe07a 40%, #f2c341 70%, #d9a521 100%)";
+
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
@@ -14,13 +16,20 @@ export default function AppleIcon() {
           alignItems: "center",
           justifyContent: "center",
           background: "#0a0a0a",
-          color: "#ffc72c",
           fontSize: 80,
           fontWeight: 700,
           fontFamily: "sans-serif",
         }}
       >
-        VC
+        <span
+          style={{
+            backgroundImage: GOLD_SHINE,
+            backgroundClip: "text",
+            color: "transparent",
+          }}
+        >
+          VC
+        </span>
       </div>
     ),
     size,

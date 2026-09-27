@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og";
 
+const GOLD_SHINE = "linear-gradient(180deg, #fff6cf 0%, #ffe07a 40%, #f2c341 70%, #d9a521 100%)";
+
 const SIZES = [32, 192, 512];
 
 export function generateImageMetadata() {
@@ -22,13 +24,20 @@ export default async function Icon({ id }: { id: Promise<string> }) {
           alignItems: "center",
           justifyContent: "center",
           background: "#0a0a0a",
-          color: "#ffc72c",
           fontSize: size * 0.45,
           fontWeight: 700,
           fontFamily: "sans-serif",
         }}
       >
-        VC
+        <span
+          style={{
+            backgroundImage: GOLD_SHINE,
+            backgroundClip: "text",
+            color: "transparent",
+          }}
+        >
+          VC
+        </span>
       </div>
     ),
     { width: size, height: size },

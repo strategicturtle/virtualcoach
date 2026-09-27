@@ -283,7 +283,7 @@ export default function Recorder() {
         )}
         {phase === "saved" && (
           <div className="flex size-full flex-col items-center justify-center gap-3 px-6 text-center">
-            <p className="text-3xl font-extrabold text-gold">Saved!</p>
+            <p className="text-3xl font-extrabold text-gold-shine">Saved!</p>
             <p className="text-muted">Your clip is uploaded and listed on the home page.</p>
           </div>
         )}
@@ -350,7 +350,10 @@ export default function Recorder() {
               Uploading… {Math.round(progress * 100)}%
             </p>
             <div className="h-2 overflow-hidden rounded-full bg-surface">
-              <div className="h-full bg-gold transition-[width]" style={{ width: `${progress * 100}%` }} />
+              <div
+                className="h-full transition-[width]"
+                style={{ backgroundImage: "var(--gold-shine)", width: `${progress * 100}%` }}
+              />
             </div>
           </div>
         )}

@@ -5,7 +5,7 @@ import { MAX_RECORDING_SECONDS } from "@/lib/videos";
 export default function Home() {
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 py-10 sm:px-6 sm:py-16">
-      <h1 className="text-4xl font-extrabold tracking-tight text-gold sm:text-5xl">
+      <h1 className="text-4xl font-extrabold tracking-tight text-gold-shine sm:text-5xl">
         VirtualCoach
       </h1>
       <p className="mt-2 text-lg text-muted">Your lacrosse coach, anywhere.</p>
