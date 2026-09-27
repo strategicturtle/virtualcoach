@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CoachingReportView from "@/components/CoachingReportView";
 import { captureFrames } from "@/lib/coaching/frames";
 import { LEVELS, POSITIONS, SKILLS, type CoachingContext } from "@/lib/coaching/options";
@@ -12,7 +12,13 @@ export type SavedAnalysis = CoachingContext & {
   createdAt: string;
 };
 
-type Phase = "form" | "capturing" | "analyzing";
+type Phase = "form" | "capturing" | "analyzing" | "done";
+
+// Progress bar layout: reading frames is measured (0-25%); the AI review can't
+// report progress, so it eases toward 97% on a typical-duration curve.
+const CAPTURE_SHARE = 25;
+const REVIEW_CEILING = 97;
+const REVIEW_TIME_CONSTANT_S = 30;
 
 const select =
   "mt-1 w-full rounded-xl border border-white/15 bg-surface px-3 py-3 text-base text-foreground focus:border-gold focus:outline-none";
@@ -42,6 +48,11 @@ export default function Coach({
   const [showForm, setShowForm] = useState(!initial);
   const [phase, setPhase] = useState<Phase>("form");
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [framesRead, setFramesRead] = useState({ done: 0, total: 0 });
+  const timerRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => window.clearInterval(timerRef.current), []);
   const [ctx, setCtx] = useState<CoachingContext>({
     skill: defaults.skill ?? initial?.skill ?? SKILLS[0],
     position: defaults.position ?? initial?.position ?? POSITIONS[0],
@@ -50,23 +61,40 @@ export default function Coach({
 
   async function run() {
     setError("");
+    setProgress(0);
+    setFramesRead({ done: 0, total: 0 });
     try {
       setPhase("capturing");
       const src = await fetch(`/api/videos/${videoId}?format=json`).then((r) => r.json());
-      const frames = await captureFrames(src.url, seconds);
+      const frames = await captureFrames(src.url, seconds, (done, total) => {
+        setFramesRead({ done, total });
+        setProgress((done / total) * CAPTURE_SHARE);
+      });
 
       setPhase("analyzing");
+      const startedAt = performance.now();
+      timerRef.current = window.setInterval(() => {
+        const secs = (performance.now() - startedAt) / 1000;
+        const eased = 1 - Math.exp(-secs / REVIEW_TIME_CONSTANT_S);
+        setProgress(CAPTURE_SHARE + (REVIEW_CEILING - CAPTURE_SHARE) * eased);
+      }, 250);
+
       const res = await fetch(`/api/videos/${videoId}/analysis`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...ctx, frames }),
       });
       const data = await res.json().catch(() => ({}));
+      window.clearInterval(timerRef.current);
       if (!res.ok) throw new Error(data.error ?? "Coaching failed. Try again.");
 
+      setPhase("done");
+      setProgress(100);
+      await new Promise((r) => setTimeout(r, 500)); // let the bar visibly finish
       setAnalysis({ ...data.analysis, createdAt: data.analysis.createdAt });
       setShowForm(false);
     } catch (err) {
+      window.clearInterval(timerRef.current);
       setError(err instanceof Error ? err.message : "Coaching failed. Try again.");
     } finally {
       setPhase("form");
@@ -74,6 +102,14 @@ export default function Coach({
   }
 
   const busy = phase !== "form";
+  const stageLabel =
+    phase === "capturing"
+      ? framesRead.total
+        ? `Reading your clip… ${framesRead.done} of ${framesRead.total} frames`
+        : "Loading your clip…"
+      : phase === "analyzing"
+        ? "Coach is reviewing your technique…"
+        : "Done";
 
   return (
     <section className="mt-8 flex flex-col gap-6">
@@ -136,23 +172,36 @@ export default function Coach({
               disabled={busy}
               className="rounded-full bg-neon px-6 py-3 font-bold text-black hover:brightness-110 disabled:opacity-60"
             >
-              {phase === "capturing"
-                ? "Reading your clip…"
-                : phase === "analyzing"
-                  ? "Coach is reviewing…"
-                  : "Get coaching"}
+              {busy ? "Working…" : "Get coaching"}
             </button>
             {analysis && !busy && (
               <button type="button" onClick={() => setShowForm(false)} className="text-sm text-gold hover:underline">
                 Cancel
               </button>
             )}
-            {phase === "analyzing" && (
-              <span className="text-sm text-muted" aria-live="polite">
-                This usually takes 30–90 seconds. Keep this page open.
-              </span>
-            )}
           </div>
+          {busy && (
+            <div className="mt-4">
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span aria-live="polite">{stageLabel}</span>
+                <span className="font-bold tabular-nums text-gold">{Math.floor(progress)}%</span>
+              </div>
+              <div
+                role="progressbar"
+                aria-label="Coaching progress"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.floor(progress)}
+                className="mt-2 h-3 overflow-hidden rounded-full bg-white/10"
+              >
+                <div
+                  className="h-full rounded-full transition-[width] duration-300 ease-out"
+                  style={{ width: `${progress}%`, backgroundImage: "var(--gold-shine)" }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-muted">Keep this page open until the review appears.</p>
+            </div>
+          )}
         </div>
       )}
 

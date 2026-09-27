@@ -32,7 +32,11 @@ function once(el: HTMLMediaElement, event: string, timeoutMs = 8000) {
  * Samples evenly spaced JPEG frames from a clip. `fallbackSeconds` covers
  * recordings whose file doesn't report a duration (some WebM from Chrome).
  */
-export async function captureFrames(url: string, fallbackSeconds: number): Promise<CapturedFrame[]> {
+export async function captureFrames(
+  url: string,
+  fallbackSeconds: number,
+  onProgress?: (done: number, total: number) => void,
+): Promise<CapturedFrame[]> {
   const video = document.createElement("video");
   video.crossOrigin = "anonymous"; // bucket CORS allows our origin, so the canvas stays readable
   video.muted = true;
@@ -65,6 +69,7 @@ export async function captureFrames(url: string, fallbackSeconds: number): Promi
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const dataUrl = canvas.toDataURL("image/jpeg", 0.72);
     frames.push({ t: Math.round(t * 10) / 10, jpegBase64: dataUrl.slice(dataUrl.indexOf(",") + 1) });
+    onProgress?.(frames.length, count);
   }
 
   video.removeAttribute("src");
