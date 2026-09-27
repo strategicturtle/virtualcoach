@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requireUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { isVideoId } from "@/lib/videos";
 
 export default async function WatchPage({ params }: PageProps<"/watch/[id]">) {
+  const user = await requireUser();
   const { id } = await params;
   if (!isVideoId(id)) notFound();
+  const video = await prisma.video.findUnique({ where: { id } });
+  if (!video || video.userId !== user.id || !video.uploaded) notFound();
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-6 sm:px-6">

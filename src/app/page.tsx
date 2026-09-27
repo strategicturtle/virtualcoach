@@ -1,11 +1,29 @@
 import Link from "next/link";
-import MyVideos from "@/components/MyVideos";
+import { logout } from "@/app/actions/auth";
+import { requireUser } from "@/lib/auth";
+import { formatDateTime } from "@/lib/format";
+import { prisma } from "@/lib/prisma";
 import { MAX_RECORDING_SECONDS } from "@/lib/videos";
 
-export default function Home() {
+export default async function Home() {
+  const user = await requireUser();
+  const videos = await prisma.video.findMany({
+    where: { userId: user.id, uploaded: true },
+    orderBy: { createdAt: "desc" },
+  });
+
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 py-10 sm:px-6 sm:py-16">
-      <h1 className="text-4xl font-extrabold tracking-tight text-gold-shine sm:text-5xl">
+      <div className="flex items-center justify-between gap-4 text-sm">
+        <span className="text-muted">
+          Signed in as <b className="text-foreground">{user.username}</b>
+        </span>
+        <form action={logout}>
+          <button className="font-semibold text-gold hover:underline">Log out</button>
+        </form>
+      </div>
+
+      <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-gold-shine sm:text-5xl">
         VirtualCoach
       </h1>
       <p className="mt-2 text-lg text-muted">Your lacrosse coach, anywhere.</p>
@@ -27,7 +45,26 @@ export default function Home() {
         </span>
       </Link>
 
-      <MyVideos />
+      {videos.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gold">Your videos</h2>
+          <ul className="mt-3 divide-y divide-white/10 rounded-xl bg-surface">
+            {videos.map((v) => (
+              <li key={v.id}>
+                <Link
+                  href={`/watch/${v.id}`}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-white/5"
+                >
+                  <time dateTime={v.createdAt.toISOString()}>
+                    {formatDateTime(v.createdAt)}
+                  </time>
+                  <span className="text-muted">{v.seconds}s ›</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }

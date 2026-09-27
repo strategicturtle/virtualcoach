@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { addMyVideo } from "@/lib/myVideos";
 import { MAX_RECORDING_SECONDS } from "@/lib/videos";
 
 type Phase = "starting" | "live" | "recording" | "review" | "uploading" | "saved" | "error";
@@ -186,7 +185,11 @@ export default function Recorder() {
       const res = await fetch("/api/videos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentType: recording.contentType, size: recording.blob.size }),
+        body: JSON.stringify({
+          contentType: recording.contentType,
+          size: recording.blob.size,
+          seconds: recording.seconds,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Upload failed.");
@@ -205,7 +208,9 @@ export default function Recorder() {
         xhr.send(recording.blob);
       });
 
-      addMyVideo({ id: data.id, createdAt: new Date().toISOString(), seconds: recording.seconds });
+      const done = await fetch(`/api/videos/${data.id}`, { method: "PATCH" });
+      if (!done.ok) throw new Error("Upload didn't finish. Try again.");
+
       setSavedId(data.id);
       setPhase("saved");
     } catch (err) {

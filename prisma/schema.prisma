@@ -1,0 +1,51 @@
+// VirtualCoach Prisma schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+}
+
+// Accounts must be approved by the admin (via the emailed link) before they can log in.
+model User {
+  id                String     @id @default(cuid())
+  username          String     @unique // stored lowercase
+  email             String?
+  passwordHash      String
+  status            UserStatus @default(PENDING)
+  approvalTokenHash String?    @unique // sha256 of the emailed approve/reject token
+  createdAt         DateTime   @default(now())
+  approvedAt        DateTime?
+  sessions          Session[]
+  videos            Video[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// A recorded clip; the file itself lives in the bucket at videos/<id>.
+model Video {
+  id          String   @id // uuid, also the bucket key suffix
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentType String
+  seconds     Int
+  uploaded    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
